@@ -1,0 +1,11 @@
+# Core evaluation library
+bert-score>=0.3.13
+
+# ML framework (CPU build by default; install CUDA-specific torch if needed)
+torch>=2.1,<3.0
+
+# Model and tokenizer management for multilingual models
+transformers>=4.40
+
+# Required for XLM-RoBERTa and some multilingual tokenizers
+sentencepiece>=0.1.99
