@@ -1,5 +1,6 @@
 # Virtual environments
 venv/
+OpenSources/
 .venv/
 env/
 ENV/
