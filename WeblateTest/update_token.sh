@@ -3,7 +3,7 @@
 
 # Replace with your new token
 NEW_TOKEN="PASTE_YOUR_NEW_TOKEN_HERE"
-USERNAME="Giggly19890103"
+USERNAME="..."
 REPO="demo"
 
 # Update Git remote

@@ -216,8 +216,8 @@ TEMPLATES = [
 # GitHub Credentials - Force HTTPS for push
 GITHUB_CREDENTIALS = {
     "api.github.com": {
-        "username": "Giggly19890103",
-        "token": "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",
+        "username": "...",
+        "token": "...",
     }
 }
 
