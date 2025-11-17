@@ -5,3 +5,6 @@ OpenSources/
 env/
 ENV/
 unordered/
+
+# Local development
+data/
