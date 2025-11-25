@@ -42,6 +42,43 @@ This will generate:
 - `boost_doc_statistics_total.json` - All libraries with main types statistics
 - `boost_doc_files_to_convert.json` - List of files to convert (used by conversion script)
 
+## Statistics Files
+
+### `boost_doc_statistics_main.json`
+
+Organized by file type with totals and top libraries:
+
+```json
+{
+  "html": {
+    "_total": {
+      "file count": 14099,
+      "line count": 4479024
+    },
+    "top libraries": [
+      {"beast": {"file count": 1508, "line count": 177412}},
+      ...
+    ]
+  },
+  ...
+}
+```
+
+### `boost_doc_statistics_total.json`
+
+All libraries with main types only:
+
+```json
+{
+  "algorithm": {
+    "html": {"file count": 160, "line count": 17317},
+    "qbk": {"file count": 22, "line count": 2200},
+    ...
+  },
+  ...
+}
+```
+
 ### Step 2: Convert to AsciiDoc
 
 Run the conversion script to convert all files to AsciiDoc:
@@ -89,43 +126,6 @@ The following file types are considered "main types" and can be converted:
 - **xml** - DocBook XML
 - **html** - HTML
 - **mml** - MathML
-
-## Statistics Files
-
-### `boost_doc_statistics_main.json`
-
-Organized by file type with totals and top libraries:
-
-```json
-{
-  "html": {
-    "_total": {
-      "file count": 14099,
-      "line count": 4479024
-    },
-    "top libraries": [
-      {"beast": {"file count": 1508, "line count": 177412}},
-      ...
-    ]
-  },
-  ...
-}
-```
-
-### `boost_doc_statistics_total.json`
-
-All libraries with main types only:
-
-```json
-{
-  "algorithm": {
-    "html": {"file count": 160, "line count": 17317},
-    "qbk": {"file count": 22, "line count": 2200},
-    ...
-  },
-  ...
-}
-```
 
 ## Fragment Files
 
