@@ -13,6 +13,26 @@ from typing import Dict, Any, Tuple, List
 # Main documentation types that can be converted to AsciiDoc
 MAIN_TYPES = {'qbk', 'adoc', 'rst', 'md', 'xml', 'html', 'mml'}
 
+TYPE_LABELS = {
+    'adoc': 'AsciiDoc',
+    'html': 'HTML',
+    'md': 'Markdown',
+    'mml': 'MathML',
+    'qbk': 'Quickbook',
+    'rst': 'reStructuredText',
+    'xml': 'DocBook XML',
+}
+
+CONVERSION_TABLE = [
+    ('HTML', 'Medium', 'Pandoc'),
+    ('Quickbook', 'High', 'Quickbook → DocBook → AsciiDoc'),
+    ('Markdown', 'Low', 'Pandoc'),
+    ('AsciiDoc', 'None', 'Copy (already target format)'),
+    ('reStructuredText', 'Low', 'Pandoc'),
+    ('DocBook XML', 'Low', 'Pandoc'),
+    ('MathML', 'Low', 'Wrap in code blocks'),
+]
+
 # Directories to skip when scanning
 SKIP_DIRS = {'test', 'tests', 'example', 'examples', 'build', '.git', 'include', 'src'}
 
@@ -245,7 +265,7 @@ def accumulate_totals(lib_stats: Dict[str, Dict[str, int]],
 
 def save_statistics_files(main_types_lib_stats: Dict[str, Dict[str, Dict[str, int]]],
                           total_stats: Dict[str, Dict[str, int]],
-                          all_file_paths: Dict[str, List[str]]) -> None:
+                          all_file_paths: Dict[str, List[str]]) -> Dict[str, Any]:
     """Save all statistics files."""
     # Save main types by type
     main_types_output_file = 'boost_doc_statistics_main.json'
@@ -269,6 +289,9 @@ def save_statistics_files(main_types_lib_stats: Dict[str, Dict[str, Dict[str, in
     with open(file_list_output, 'w', encoding='utf-8') as f:
         json.dump(sorted_file_paths, f, indent=2, ensure_ascii=False)
 
+    report_content = build_report(main_types_by_type, sorted_file_paths)
+    write_report(report_content)
+
     print("\nAnalysis complete!")
     print(
         f"  Main types by type (with totals & top libraries) "
@@ -276,12 +299,180 @@ def save_statistics_files(main_types_lib_stats: Dict[str, Dict[str, Dict[str, in
     )
     print(f"  All libraries main types statistics saved to: {output_file}")
     print(f"  File list for conversion saved to: {file_list_output}")
+    print("  Summary report saved to: Report.md")
+
+    return main_types_by_type
+
+
+def build_report(main_stats: Dict[str, Any],
+                 file_inventory: Dict[str, List[str]]) -> str:
+    """Generate the contents of the documentation report."""
+    file_types = main_stats.get('file types', [])
+    total_files = sum(
+        main_stats.get(doc_type, {}).get('_total', {}).get('file count', 0)
+        for doc_type in file_types
+    )
+    total_lines = sum(
+        main_stats.get(doc_type, {}).get('_total', {}).get('line count', 0)
+        for doc_type in file_types
+    )
+
+    def format_percentage(count: int) -> str:
+        if not total_files:
+            return "0%"
+        return f"{(count / total_files) * 100:.1f}%"
+
+    def short_lines(lines: int) -> str:
+        if lines >= 1000:
+            return f"{round(lines / 1000):,}K lines"
+        return f"{lines:,} lines"
+
+    report_lines = [
+        "# Boost Documentation Analysis - Report",
+        "",
+        "**Analysis Date:** Generated from Boost 1.90.0 Documentation",
+        "",
+        "---",
+        "",
+        "## Summary",
+        "",
+        "Comprehensive analysis of Boost library documentation reveals "
+        f"**{total_files:,} files** containing **{total_lines:,} lines** across "
+        "7 documentation formats. All files are cataloged and ready for unified "
+        "AsciiDoc conversion.",
+        "",
+        "### Key Metrics",
+        "",
+        f"- **Total Files:** {total_files:,}",
+        f"- **Total Lines:** {total_lines:,}",
+        "- **Formats:** 7 types (HTML, Quickbook, Markdown, AsciiDoc, "
+        "reStructuredText, DocBook XML, MathML)",
+        "- **Status:** ✅ Ready for conversion",
+        "",
+        "---",
+        "",
+        "## Documentation Format Distribution",
+        "",
+        "| Format                     | Files  | %     | Lines     |",
+        "| -------------------------- | ------ | ----- | --------- |",
+    ]
+
+    for doc_type in file_types:
+        doc_label = TYPE_LABELS.get(doc_type, doc_type.upper())
+        total = main_stats.get(doc_type, {}).get('_total', {})
+        file_count = total.get('file count', 0)
+        line_count = total.get('line count', 0)
+        report_lines.append(
+            f"| **{doc_label}** | {file_count:,} | "
+            f"{format_percentage(file_count)} | {line_count:,} |"
+        )
+
+    sorted_formats = sorted(
+        [
+            (
+                doc_type,
+                TYPE_LABELS.get(doc_type, doc_type.upper()),
+                main_stats.get(doc_type, {}).get('_total', {}).get('file count', 0),
+                main_stats.get(doc_type, {}).get('_total', {}).get('line count', 0),
+            )
+            for doc_type in file_types
+        ],
+        key=lambda item: item[2],
+        reverse=True,
+    )
+
+    top_line = ""
+    if sorted_formats:
+        top = sorted_formats[0]
+        top_line = (
+            f"**Key Finding:** {top[1]} represents {format_percentage(top[2])} "
+            "of all documentation files."
+        )
+        if len(sorted_formats) > 1:
+            second = sorted_formats[1]
+            top_line += (
+                f" {second[1]} follows with {format_percentage(second[2])} "
+                f"across {second[2]:,} files."
+            )
+
+    report_lines.extend([
+        "",
+        top_line or "**Key Finding:** Documentation files are well-distributed "
+        "across multiple formats.",
+        "",
+        "---",
+        "",
+        "## Top Libraries by Format",
+        "",
+    ])
+
+    for doc_type in file_types:
+        doc_label = TYPE_LABELS.get(doc_type, doc_type.upper())
+        total = main_stats.get(doc_type, {}).get('_total', {})
+        file_count = total.get('file count', 0)
+        report_lines.append(f"### {doc_label} ({file_count:,} files)")
+        report_lines.append("")
+        top_libraries = main_stats.get(doc_type, {}).get('top libraries', {})
+        if top_libraries:
+            for idx, (lib_name, stats_dict) in enumerate(top_libraries.items(), 1):
+                lib_files = stats_dict.get('file count', 0)
+                lib_lines = stats_dict.get('line count', 0)
+                report_lines.append(
+                    f"{idx}. **{lib_name}** - {lib_files:,} files, "
+                    f"{short_lines(lib_lines)}"
+                )
+        else:
+            report_lines.append("No libraries recorded.")
+        report_lines.append("")
+
+    report_lines.extend([
+        "---",
+        "",
+        "## Conversion Readiness",
+        "",
+        "### Status: ✅ Ready",
+        "",
+        "All files cataloged in `boost_doc_files_to_convert.json` and ready for "
+        "conversion pipeline.",
+        "",
+        "### Conversion Complexity",
+        "",
+        "| Format           | Complexity | Tool Required                  |",
+        "| ---------------- | ---------- | ------------------------------ |",
+    ])
+
+    for format_name, complexity, tool in CONVERSION_TABLE:
+        report_lines.append(
+            f"| {format_name:<15} | {complexity:<10} | {tool} |"
+        )
+
+    report_lines.extend([
+        "",
+        "**Note:** Fragment files (included in parent documents) are automatically "
+        "detected and skipped.",
+        "",
+        "---",
+        "",
+        "## Generated Artifacts",
+        "",
+        "1. **boost_doc_statistics_main.json** - Statistics by file type with totals",
+        "2. **boost_doc_statistics_total.json** - Complete library breakdown",
+        "3. **boost_doc_files_to_convert.json** - Complete file inventory "
+        f"({sum(len(v) for v in file_inventory.values()):,} files)",
+    ])
+
+    return "\n".join(report_lines)
+
+
+def write_report(content: str, path: Path = Path('Report.md')) -> None:
+    """Write the generated report to disk."""
+    path.write_text(content, encoding='utf-8')
 
 
 def main():
     """Main function to analyze all Boost libraries."""
-    boost_libs_path = Path('boost_1_89_0/libs')
-
+    # boost_libs_path = Path('boost_1_89_0/libs')
+    boost_libs_path = Path('D:/boost/libs')
     if not boost_libs_path.exists():
         print(f"Error: {boost_libs_path} does not exist!")
         return
