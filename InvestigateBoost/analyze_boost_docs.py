@@ -11,16 +11,30 @@ from collections import defaultdict
 from typing import Dict, Any, Tuple, List
 
 # Main documentation types that can be converted to AsciiDoc
-MAIN_TYPES = {'qbk', 'adoc', 'rst', 'md', 'xml', 'html', 'mml'}
+MAIN_TYPES = {'qbk', 'adoc', 'rst', 'md', 'xml', 'html', 'htm', 'mml', 'dox'}
 
 TYPE_LABELS = {
     'adoc': 'AsciiDoc',
+    'dox': 'Doxygen',
     'html': 'HTML',
+    'htm': 'HTML',
     'md': 'Markdown',
     'mml': 'MathML',
     'qbk': 'Quickbook',
     'rst': 'reStructuredText',
     'xml': 'DocBook XML',
+}
+
+# Map format labels to their extensions
+LABEL_TO_EXTENSIONS = {
+    'AsciiDoc': ['.adoc'],
+    'Doxygen': ['.dox'],
+    'HTML': ['.html', '.htm'],
+    'Markdown': ['.md'],
+    'MathML': ['.mml'],
+    'Quickbook': ['.qbk'],
+    'reStructuredText': ['.rst'],
+    'DocBook XML': ['.xml'],
 }
 
 CONVERSION_TABLE = [
@@ -31,6 +45,7 @@ CONVERSION_TABLE = [
     ('reStructuredText', 'Low', 'Pandoc'),
     ('DocBook XML', 'Low', 'Pandoc'),
     ('MathML', 'Low', 'Wrap in code blocks'),
+    ('Doxygen', 'Low', 'Pandoc'),
 ]
 
 # Directories to skip when scanning
@@ -118,6 +133,8 @@ def scan_library_docs(
 
         # Check if we're in a documentation directory
         is_doc_dir = 'doc' in root_path.parts
+        if not is_doc_dir:
+            continue
 
         # Process files
         for file in files:
@@ -327,6 +344,14 @@ def build_report(main_stats: Dict[str, Any],
             return f"{round(lines / 1000):,}K lines"
         return f"{lines:,} lines"
 
+    def format_with_extensions(label: str) -> str:
+        """Format label with file extensions."""
+        extensions = LABEL_TO_EXTENSIONS.get(label, [])
+        if extensions:
+            ext_str = ', '.join(extensions)
+            return f"{label} ({ext_str})"
+        return label
+
     report_lines = [
         "# Boost Documentation Analysis - Report",
         "",
@@ -338,60 +363,81 @@ def build_report(main_stats: Dict[str, Any],
         "",
         "Comprehensive analysis of Boost library documentation reveals "
         f"**{total_files:,} files** containing **{total_lines:,} lines** across "
-        "7 documentation formats. All files are cataloged and ready for unified "
-        "AsciiDoc conversion.",
+        f"{len(file_types)} documentation formats. All files are cataloged and "
+        "ready for unified AsciiDoc conversion.",
         "",
         "### Key Metrics",
         "",
         f"- **Total Files:** {total_files:,}",
         f"- **Total Lines:** {total_lines:,}",
-        "- **Formats:** 7 types (HTML, Quickbook, Markdown, AsciiDoc, "
-        "reStructuredText, DocBook XML, MathML)",
+        f"- **Formats:** {len(file_types)} types (see table below)",
         "- **Status:** ✅ Ready for conversion",
         "",
         "---",
         "",
         "## Documentation Format Distribution",
         "",
-        "| Format                     | Files  | %     | Lines     |",
-        "| -------------------------- | ------ | ----- | --------- |",
+        "| Format                          | Files  | %     | Lines     |",
+        "| ------------------------------- | ------ | ----- | --------- |",
     ]
 
+    # Group file types by label to combine html/htm
+    grouped_by_label = {}
     for doc_type in file_types:
         doc_label = TYPE_LABELS.get(doc_type, doc_type.upper())
-        total = main_stats.get(doc_type, {}).get('_total', {})
-        file_count = total.get('file count', 0)
-        line_count = total.get('line count', 0)
+        if doc_label not in grouped_by_label:
+            grouped_by_label[doc_label] = []
+        grouped_by_label[doc_label].append(doc_type)
+
+    # Generate table rows, combining html and htm
+    for doc_label in sorted(grouped_by_label.keys()):
+        types_for_label = grouped_by_label[doc_label]
+        # Combine statistics for all types with this label
+        combined_file_count = sum(
+            main_stats.get(doc_type, {}).get('_total', {}).get('file count', 0)
+            for doc_type in types_for_label
+        )
+        combined_line_count = sum(
+            main_stats.get(doc_type, {}).get('_total', {}).get('line count', 0)
+            for doc_type in types_for_label
+        )
+        label_with_ext = format_with_extensions(doc_label)
         report_lines.append(
-            f"| **{doc_label}** | {file_count:,} | "
-            f"{format_percentage(file_count)} | {line_count:,} |"
+            f"| **{label_with_ext}** | {combined_file_count:,} | "
+            f"{format_percentage(combined_file_count)} | "
+            f"{combined_line_count:,} |"
         )
 
-    sorted_formats = sorted(
-        [
-            (
-                doc_type,
-                TYPE_LABELS.get(doc_type, doc_type.upper()),
-                main_stats.get(doc_type, {}).get('_total', {}).get('file count', 0),
-                main_stats.get(doc_type, {}).get('_total', {}).get('line count', 0),
-            )
-            for doc_type in file_types
-        ],
-        key=lambda item: item[2],
-        reverse=True,
-    )
+    # Create sorted formats using grouped statistics
+    sorted_formats = []
+    for doc_label in grouped_by_label.keys():
+        types_for_label = grouped_by_label[doc_label]
+        combined_file_count = sum(
+            main_stats.get(doc_type, {}).get('_total', {}).get('file count', 0)
+            for doc_type in types_for_label
+        )
+        combined_line_count = sum(
+            main_stats.get(doc_type, {}).get('_total', {}).get('line count', 0)
+            for doc_type in types_for_label
+        )
+        sorted_formats.append(
+            (types_for_label[0], doc_label, combined_file_count, combined_line_count)
+        )
+    sorted_formats.sort(key=lambda item: item[2], reverse=True)
 
     top_line = ""
     if sorted_formats:
         top = sorted_formats[0]
+        top_label = format_with_extensions(top[1])
         top_line = (
-            f"**Key Finding:** {top[1]} represents {format_percentage(top[2])} "
-            "of all documentation files."
+            f"**Key Finding:** {top_label} represents "
+            f"{format_percentage(top[2])} of all documentation files."
         )
         if len(sorted_formats) > 1:
             second = sorted_formats[1]
+            second_label = format_with_extensions(second[1])
             top_line += (
-                f" {second[1]} follows with {format_percentage(second[2])} "
+                f" {second_label} follows with {format_percentage(second[2])} "
                 f"across {second[2]:,} files."
             )
 
@@ -406,15 +452,45 @@ def build_report(main_stats: Dict[str, Any],
         "",
     ])
 
-    for doc_type in file_types:
-        doc_label = TYPE_LABELS.get(doc_type, doc_type.upper())
-        total = main_stats.get(doc_type, {}).get('_total', {})
-        file_count = total.get('file count', 0)
-        report_lines.append(f"### {doc_label} ({file_count:,} files)")
+    # Process each label group (combining html/htm)
+    for doc_label in sorted(grouped_by_label.keys()):
+        types_for_label = grouped_by_label[doc_label]
+        # Combine file counts
+        combined_file_count = sum(
+            main_stats.get(doc_type, {}).get('_total', {}).get('file count', 0)
+            for doc_type in types_for_label
+        )
+        label_with_ext = format_with_extensions(doc_label)
+        report_lines.append(
+            f"### {label_with_ext} ({combined_file_count:,} files)"
+        )
         report_lines.append("")
-        top_libraries = main_stats.get(doc_type, {}).get('top libraries', {})
-        if top_libraries:
-            for idx, (lib_name, stats_dict) in enumerate(top_libraries.items(), 1):
+
+        # Merge top libraries from all types with this label
+        merged_libraries = {}
+        for doc_type in types_for_label:
+            top_libraries = main_stats.get(doc_type, {}).get('top libraries', {})
+            for lib_name, stats_dict in top_libraries.items():
+                if lib_name not in merged_libraries:
+                    merged_libraries[lib_name] = {
+                        'file count': 0,
+                        'line count': 0
+                    }
+                merged_libraries[lib_name]['file count'] += (
+                    stats_dict.get('file count', 0)
+                )
+                merged_libraries[lib_name]['line count'] += (
+                    stats_dict.get('line count', 0)
+                )
+
+        if merged_libraries:
+            # Sort by file count descending
+            sorted_libs = sorted(
+                merged_libraries.items(),
+                key=lambda x: x[1]['file count'],
+                reverse=True
+            )
+            for idx, (lib_name, stats_dict) in enumerate(sorted_libs[:5], 1):
                 lib_files = stats_dict.get('file count', 0)
                 lib_lines = stats_dict.get('line count', 0)
                 report_lines.append(
@@ -437,13 +513,14 @@ def build_report(main_stats: Dict[str, Any],
         "",
         "### Conversion Complexity",
         "",
-        "| Format           | Complexity | Tool Required                  |",
-        "| ---------------- | ---------- | ------------------------------ |",
+        "| Format                          | Complexity | Tool Required |",
+        "| ------------------------------- | ---------- | ------------- |",
     ])
 
     for format_name, complexity, tool in CONVERSION_TABLE:
+        label_with_ext = format_with_extensions(format_name)
         report_lines.append(
-            f"| {format_name:<15} | {complexity:<10} | {tool} |"
+            f"| {label_with_ext:<30} | {complexity:<10} | {tool} |"
         )
 
     report_lines.extend([
@@ -499,6 +576,8 @@ def main():
 
             # Accumulate totals
             accumulate_totals(lib_stats, total_stats)
+        else:
+            print(lib_dir)
 
     # Save all output files
     save_statistics_files(main_types_lib_stats, total_stats, all_file_paths)

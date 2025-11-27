@@ -253,6 +253,16 @@ class HtmlConverter(PandocConverter):
         self.pandoc(source, adoc_dest, "asciidoc")
 
 
+class HtmConverter(PandocConverter):
+    """Convert HTM files."""
+    extension = "htm"
+    reader = "html"
+
+    def convert(self, source: Path, adoc_dest: Path) -> None:
+        """Convert HTM to AsciiDoc."""
+        self.pandoc(source, adoc_dest, "asciidoc")
+
+
 class QuickbookConverter(DocumentConverter):
     """Convert Quickbook files."""
     extension = "qbk"
@@ -298,6 +308,16 @@ class MathMLConverter(DocumentConverter):
         copy_to(adoc_dest, asciidoc_content)
 
 
+class DoxygenConverter(PandocConverter):
+    """Convert Doxygen files."""
+    extension = "dox"
+    reader = "markdown"
+
+    def convert(self, source: Path, adoc_dest: Path) -> None:
+        """Convert Doxygen to AsciiDoc."""
+        self.pandoc(source, adoc_dest, "asciidoc")
+
+
 CONVERTERS: List[DocumentConverter] = [
     QuickbookConverter("qbk"),
     RstConverter("rst"),
@@ -305,7 +325,9 @@ CONVERTERS: List[DocumentConverter] = [
     AsciiDocConverter("adoc"),
     DocBookConverter("xml"),
     HtmlConverter("html"),
+    HtmConverter("htm"),
     MathMLConverter("mml"),
+    DoxygenConverter("dox"),
 ]
 
 
