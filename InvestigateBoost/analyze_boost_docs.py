@@ -11,7 +11,42 @@ from collections import defaultdict
 from typing import Dict, Any, Tuple, List
 
 # Main documentation types that can be converted to AsciiDoc
-MAIN_TYPES = {'qbk', 'adoc', 'rst', 'md', 'xml', 'html', 'mml'}
+MAIN_TYPES = {'qbk', 'adoc', 'rst', 'md', 'xml', 'html', 'htm', 'mml', 'dox'}
+
+TYPE_LABELS = {
+    'adoc': 'AsciiDoc',
+    'dox': 'Doxygen',
+    'html': 'HTML',
+    'htm': 'HTML',
+    'md': 'Markdown',
+    'mml': 'MathML',
+    'qbk': 'Quickbook',
+    'rst': 'reStructuredText',
+    'xml': 'DocBook XML',
+}
+
+# Map format labels to their extensions
+LABEL_TO_EXTENSIONS = {
+    'AsciiDoc': ['.adoc'],
+    'Doxygen': ['.dox'],
+    'HTML': ['.html', '.htm'],
+    'Markdown': ['.md'],
+    'MathML': ['.mml'],
+    'Quickbook': ['.qbk'],
+    'reStructuredText': ['.rst'],
+    'DocBook XML': ['.xml'],
+}
+
+CONVERSION_TABLE = [
+    ('HTML', 'Medium', 'Pandoc'),
+    ('Quickbook', 'High', 'Quickbook → DocBook → AsciiDoc'),
+    ('Markdown', 'Low', 'Pandoc'),
+    ('AsciiDoc', 'None', 'Copy (already target format)'),
+    ('reStructuredText', 'Low', 'Pandoc'),
+    ('DocBook XML', 'Low', 'Pandoc'),
+    ('MathML', 'Low', 'Wrap in code blocks'),
+    ('Doxygen', 'Low', 'Pandoc'),
+]
 
 # Directories to skip when scanning
 SKIP_DIRS = {'test', 'tests', 'example', 'examples', 'build', '.git', 'include', 'src'}
@@ -98,6 +133,8 @@ def scan_library_docs(
 
         # Check if we're in a documentation directory
         is_doc_dir = 'doc' in root_path.parts
+        if not is_doc_dir:
+            continue
 
         # Process files
         for file in files:
@@ -245,7 +282,7 @@ def accumulate_totals(lib_stats: Dict[str, Dict[str, int]],
 
 def save_statistics_files(main_types_lib_stats: Dict[str, Dict[str, Dict[str, int]]],
                           total_stats: Dict[str, Dict[str, int]],
-                          all_file_paths: Dict[str, List[str]]) -> None:
+                          all_file_paths: Dict[str, List[str]]) -> Dict[str, Any]:
     """Save all statistics files."""
     # Save main types by type
     main_types_output_file = 'boost_doc_statistics_main.json'
@@ -269,6 +306,9 @@ def save_statistics_files(main_types_lib_stats: Dict[str, Dict[str, Dict[str, in
     with open(file_list_output, 'w', encoding='utf-8') as f:
         json.dump(sorted_file_paths, f, indent=2, ensure_ascii=False)
 
+    report_content = build_report(main_types_by_type, sorted_file_paths)
+    write_report(report_content)
+
     print("\nAnalysis complete!")
     print(
         f"  Main types by type (with totals & top libraries) "
@@ -276,12 +316,240 @@ def save_statistics_files(main_types_lib_stats: Dict[str, Dict[str, Dict[str, in
     )
     print(f"  All libraries main types statistics saved to: {output_file}")
     print(f"  File list for conversion saved to: {file_list_output}")
+    print("  Summary report saved to: Report.md")
+
+    return main_types_by_type
+
+
+def build_report(main_stats: Dict[str, Any],
+                 file_inventory: Dict[str, List[str]]) -> str:
+    """Generate the contents of the documentation report."""
+    file_types = main_stats.get('file types', [])
+    total_files = sum(
+        main_stats.get(doc_type, {}).get('_total', {}).get('file count', 0)
+        for doc_type in file_types
+    )
+    total_lines = sum(
+        main_stats.get(doc_type, {}).get('_total', {}).get('line count', 0)
+        for doc_type in file_types
+    )
+
+    def format_percentage(count: int) -> str:
+        if not total_files:
+            return "0%"
+        return f"{(count / total_files) * 100:.1f}%"
+
+    def short_lines(lines: int) -> str:
+        if lines >= 1000:
+            return f"{round(lines / 1000):,}K lines"
+        return f"{lines:,} lines"
+
+    def format_with_extensions(label: str) -> str:
+        """Format label with file extensions."""
+        extensions = LABEL_TO_EXTENSIONS.get(label, [])
+        if extensions:
+            ext_str = ', '.join(extensions)
+            return f"{label} ({ext_str})"
+        return label
+
+    report_lines = [
+        "# Boost Documentation Analysis - Report",
+        "",
+        "**Analysis Date:** Generated from Boost 1.90.0 Documentation",
+        "",
+        "---",
+        "",
+        "## Summary",
+        "",
+        "Comprehensive analysis of Boost library documentation reveals "
+        f"**{total_files:,} files** containing **{total_lines:,} lines** across "
+        f"{len(file_types)} documentation formats. All files are cataloged and "
+        "ready for unified AsciiDoc conversion.",
+        "",
+        "### Key Metrics",
+        "",
+        f"- **Total Files:** {total_files:,}",
+        f"- **Total Lines:** {total_lines:,}",
+        f"- **Formats:** {len(file_types)} types (see table below)",
+        "- **Status:** ✅ Ready for conversion",
+        "",
+        "---",
+        "",
+        "## Documentation Format Distribution",
+        "",
+        "| Format                          | Files  | %     | Lines     |",
+        "| ------------------------------- | ------ | ----- | --------- |",
+    ]
+
+    # Group file types by label to combine html/htm
+    grouped_by_label = {}
+    for doc_type in file_types:
+        doc_label = TYPE_LABELS.get(doc_type, doc_type.upper())
+        if doc_label not in grouped_by_label:
+            grouped_by_label[doc_label] = []
+        grouped_by_label[doc_label].append(doc_type)
+
+    # Generate table rows, combining html and htm
+    for doc_label in sorted(grouped_by_label.keys()):
+        types_for_label = grouped_by_label[doc_label]
+        # Combine statistics for all types with this label
+        combined_file_count = sum(
+            main_stats.get(doc_type, {}).get('_total', {}).get('file count', 0)
+            for doc_type in types_for_label
+        )
+        combined_line_count = sum(
+            main_stats.get(doc_type, {}).get('_total', {}).get('line count', 0)
+            for doc_type in types_for_label
+        )
+        label_with_ext = format_with_extensions(doc_label)
+        report_lines.append(
+            f"| **{label_with_ext}** | {combined_file_count:,} | "
+            f"{format_percentage(combined_file_count)} | "
+            f"{combined_line_count:,} |"
+        )
+
+    # Create sorted formats using grouped statistics
+    sorted_formats = []
+    for doc_label in grouped_by_label.keys():
+        types_for_label = grouped_by_label[doc_label]
+        combined_file_count = sum(
+            main_stats.get(doc_type, {}).get('_total', {}).get('file count', 0)
+            for doc_type in types_for_label
+        )
+        combined_line_count = sum(
+            main_stats.get(doc_type, {}).get('_total', {}).get('line count', 0)
+            for doc_type in types_for_label
+        )
+        sorted_formats.append(
+            (types_for_label[0], doc_label, combined_file_count, combined_line_count)
+        )
+    sorted_formats.sort(key=lambda item: item[2], reverse=True)
+
+    top_line = ""
+    if sorted_formats:
+        top = sorted_formats[0]
+        top_label = format_with_extensions(top[1])
+        top_line = (
+            f"**Key Finding:** {top_label} represents "
+            f"{format_percentage(top[2])} of all documentation files."
+        )
+        if len(sorted_formats) > 1:
+            second = sorted_formats[1]
+            second_label = format_with_extensions(second[1])
+            top_line += (
+                f" {second_label} follows with {format_percentage(second[2])} "
+                f"across {second[2]:,} files."
+            )
+
+    report_lines.extend([
+        "",
+        top_line or "**Key Finding:** Documentation files are well-distributed "
+        "across multiple formats.",
+        "",
+        "---",
+        "",
+        "## Top Libraries by Format",
+        "",
+    ])
+
+    # Process each label group (combining html/htm)
+    for doc_label in sorted(grouped_by_label.keys()):
+        types_for_label = grouped_by_label[doc_label]
+        # Combine file counts
+        combined_file_count = sum(
+            main_stats.get(doc_type, {}).get('_total', {}).get('file count', 0)
+            for doc_type in types_for_label
+        )
+        label_with_ext = format_with_extensions(doc_label)
+        report_lines.append(
+            f"### {label_with_ext} ({combined_file_count:,} files)"
+        )
+        report_lines.append("")
+
+        # Merge top libraries from all types with this label
+        merged_libraries = {}
+        for doc_type in types_for_label:
+            top_libraries = main_stats.get(doc_type, {}).get('top libraries', {})
+            for lib_name, stats_dict in top_libraries.items():
+                if lib_name not in merged_libraries:
+                    merged_libraries[lib_name] = {
+                        'file count': 0,
+                        'line count': 0
+                    }
+                merged_libraries[lib_name]['file count'] += (
+                    stats_dict.get('file count', 0)
+                )
+                merged_libraries[lib_name]['line count'] += (
+                    stats_dict.get('line count', 0)
+                )
+
+        if merged_libraries:
+            # Sort by file count descending
+            sorted_libs = sorted(
+                merged_libraries.items(),
+                key=lambda x: x[1]['file count'],
+                reverse=True
+            )
+            for idx, (lib_name, stats_dict) in enumerate(sorted_libs[:5], 1):
+                lib_files = stats_dict.get('file count', 0)
+                lib_lines = stats_dict.get('line count', 0)
+                report_lines.append(
+                    f"{idx}. **{lib_name}** - {lib_files:,} files, "
+                    f"{short_lines(lib_lines)}"
+                )
+        else:
+            report_lines.append("No libraries recorded.")
+        report_lines.append("")
+
+    report_lines.extend([
+        "---",
+        "",
+        "## Conversion Readiness",
+        "",
+        "### Status: ✅ Ready",
+        "",
+        "All files cataloged in `boost_doc_files_to_convert.json` and ready for "
+        "conversion pipeline.",
+        "",
+        "### Conversion Complexity",
+        "",
+        "| Format                          | Complexity | Tool Required |",
+        "| ------------------------------- | ---------- | ------------- |",
+    ])
+
+    for format_name, complexity, tool in CONVERSION_TABLE:
+        label_with_ext = format_with_extensions(format_name)
+        report_lines.append(
+            f"| {label_with_ext:<30} | {complexity:<10} | {tool} |"
+        )
+
+    report_lines.extend([
+        "",
+        "**Note:** Fragment files (included in parent documents) are automatically "
+        "detected and skipped.",
+        "",
+        "---",
+        "",
+        "## Generated Artifacts",
+        "",
+        "1. **boost_doc_statistics_main.json** - Statistics by file type with totals",
+        "2. **boost_doc_statistics_total.json** - Complete library breakdown",
+        "3. **boost_doc_files_to_convert.json** - Complete file inventory "
+        f"({sum(len(v) for v in file_inventory.values()):,} files)",
+    ])
+
+    return "\n".join(report_lines)
+
+
+def write_report(content: str, path: Path = Path('Report.md')) -> None:
+    """Write the generated report to disk."""
+    path.write_text(content, encoding='utf-8')
 
 
 def main():
     """Main function to analyze all Boost libraries."""
-    boost_libs_path = Path('boost_1_89_0/libs')
-
+    # boost_libs_path = Path('boost_1_89_0/libs')
+    boost_libs_path = Path('D:/boost/libs')
     if not boost_libs_path.exists():
         print(f"Error: {boost_libs_path} does not exist!")
         return
@@ -308,6 +576,8 @@ def main():
 
             # Accumulate totals
             accumulate_totals(lib_stats, total_stats)
+        else:
+            print(lib_dir)
 
     # Save all output files
     save_statistics_files(main_types_lib_stats, total_stats, all_file_paths)

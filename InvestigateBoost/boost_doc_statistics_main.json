@@ -1,6 +1,8 @@
 {
   "file types": [
     "adoc",
+    "dox",
+    "htm",
     "html",
     "md",
     "mml",
@@ -10,8 +12,8 @@
   ],
   "adoc": {
     "_total": {
-      "file count": 465,
-      "line count": 92691
+      "file count": 462,
+      "line count": 93397
     },
     "top libraries": {
       "cobalt": {
@@ -23,72 +25,124 @@
         "line count": 23299
       },
       "json": {
-        "file count": 34,
-        "line count": 3797
+        "file count": 32,
+        "line count": 3287
       },
       "hash2": {
         "file count": 30,
         "line count": 4100
       },
-      "process": {
-        "file count": 27,
-        "line count": 2176
+      "uuid": {
+        "file count": 28,
+        "line count": 1999
+      }
+    }
+  },
+  "dox": {
+    "_total": {
+      "file count": 10,
+      "line count": 1969
+    },
+    "top libraries": {
+      "program_options": {
+        "file count": 5,
+        "line count": 379
+      },
+      "asio": {
+        "file count": 2,
+        "line count": 756
+      },
+      "nowide": {
+        "file count": 2,
+        "line count": 553
+      },
+      "gil": {
+        "file count": 1,
+        "line count": 281
+      }
+    }
+  },
+  "htm": {
+    "_total": {
+      "file count": 101,
+      "line count": 29666
+    },
+    "top libraries": {
+      "polygon": {
+        "file count": 40,
+        "line count": 15640
+      },
+      "sort": {
+        "file count": 32,
+        "line count": 7567
+      },
+      "numeric": {
+        "file count": 10,
+        "line count": 2961
+      },
+      "tokenizer": {
+        "file count": 8,
+        "line count": 1465
+      },
+      "graph": {
+        "file count": 5,
+        "line count": 615
       }
     }
   },
   "html": {
     "_total": {
-      "file count": 14099,
-      "line count": 4479024
+      "file count": 3892,
+      "line count": 757355
     },
     "top libraries": {
-      "beast": {
-        "file count": 1508,
-        "line count": 177412
+      "outcome": {
+        "file count": 528,
+        "line count": 26377
       },
-      "mysql": {
-        "file count": 979,
-        "line count": 104461
+      "preprocessor": {
+        "file count": 524,
+        "line count": 32490
       },
-      "gil": {
-        "file count": 853,
-        "line count": 112346
+      "math": {
+        "file count": 499,
+        "line count": 176687
       },
-      "hana": {
-        "file count": 738,
-        "line count": 129072
+      "mpl": {
+        "file count": 266,
+        "line count": 28597
       },
-      "log": {
-        "file count": 673,
-        "line count": 72359
+      "icl": {
+        "file count": 255,
+        "line count": 42116
       }
     }
   },
   "md": {
     "_total": {
-      "file count": 579,
-      "line count": 90556
+      "file count": 9,
+      "line count": 1407
     },
     "top libraries": {
-      "redis": {
-        "file count": 245,
-        "line count": 43289
-      },
-      "unordered": {
-        "file count": 191,
-        "line count": 34993
-      },
       "gil": {
-        "file count": 4,
-        "line count": 1240
+        "file count": 1,
+        "line count": 34
+      },
+      "histogram": {
+        "file count": 1,
+        "line count": 9
       },
       "json": {
-        "file count": 4,
-        "line count": 167
+        "file count": 1,
+        "line count": 11
       },
-      "numeric": {
-        "file count": 4,
-        "line count": 92
+      "leaf": {
+        "file count": 1,
+        "line count": 538
+      },
+      "mysql": {
+        "file count": 1,
+        "line count": 49
       }
     }
   },
@@ -110,14 +164,10 @@
   },
   "qbk": {
     "_total": {
-      "file count": 2578,
-      "line count": 606075
+      "file count": 2411,
+      "line count": 593592
     },
     "top libraries": {
-      "geometry": {
-        "file count": 334,
-        "line count": 24148
-      },
       "math": {
         "file count": 256,
         "line count": 54958
@@ -126,13 +176,17 @@
         "file count": 206,
         "line count": 17355
       },
+      "geometry": {
+        "file count": 176,
+        "line count": 8463
+      },
       "type_traits": {
         "file count": 161,
         "line count": 9492
       },
       "spirit": {
         "file count": 155,
-        "line count": 32109
+        "line count": 32112
       }
     }
   },
@@ -166,14 +220,10 @@
   },
   "xml": {
     "_total": {
-      "file count": 403,
-      "line count": 270164
+      "file count": 223,
+      "line count": 90505
     },
     "top libraries": {
-      "date_time": {
-        "file count": 73,
-        "line count": 19731
-      },
       "proto": {
         "file count": 64,
         "line count": 17730
@@ -189,6 +239,10 @@
       "variant": {
         "file count": 21,
         "line count": 4503
+      },
+      "concept_check": {
+        "file count": 12,
+        "line count": 1917
       }
     }
   }
