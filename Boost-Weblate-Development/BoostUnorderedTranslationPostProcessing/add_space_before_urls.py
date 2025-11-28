@@ -73,7 +73,7 @@ def add_space_before_urls(content: str) -> tuple[str, int]:
         # Add space after the characters (handles figures, numbers, symbols, text, etc.)
         return f"{chars_before} {url}"
     
-    content, count2 = re.subn(pattern2, replace_func2, content)
+    content, count2 = re.subn(pattern2, replace_func2, content, flags=re.DOTALL)
     total_count += count2
     
     return content, total_count
