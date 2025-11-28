@@ -60,14 +60,63 @@ def post_process_adoc(adoc_content):
     # Match: (backtick code)(optional char after)
     adoc_content = re.sub(r'(`[^`]+`)([^\s`]?)', add_space_after, adoc_content)
     
+    # Remove orphaned closing tags (like </a> without opening tag)
+    adoc_content = re.sub(r'</a>', '', adoc_content)
+    adoc_content = re.sub(r'</em>', '', adoc_content)
+    
     return adoc_content
 
 def convert_html_links_to_adoc_in_text(text_content):
-    """Convert HTML <a> tags within text content to AsciiDoc link format using regex.
+    """Convert HTML <a> and <em> tags within text content to AsciiDoc format using regex.
     
     This function preserves HTML entities like &lt; and &gt; by using regex
     instead of BeautifulSoup, which would decode them.
     """
+    # First, convert <em> tags to AsciiDoc emphasis format (_text_)
+    # Handle nested tags recursively - process innermost tags first
+    def replace_em_tag(em_match):
+        """Replace <em> tags with AsciiDoc emphasis format."""
+        em_full = em_match.group(0)
+        # Extract content between <em> and </em> - handle attributes like <em class="x">
+        em_inner_match = re.search(r'<em[^>]*>([\s\S]*?)</em>', em_full)
+        if em_inner_match:
+            em_text = em_inner_match.group(1)
+            
+            # Recursively process nested <em> tags first (if any)
+            em_text = re.sub(r'<em[^>]*>([\s\S]*?)</em>', r'_\1_', em_text, flags=re.DOTALL)
+            
+            # Process nested <code> tags inside <em>
+            em_text = re.sub(r'<code[^>]*>([\s\S]*?)</code>', r'`\1`', em_text, flags=re.DOTALL)
+            
+            # Process nested <a> tags inside <em> - convert them to links
+            def replace_nested_a_tag(a_match):
+                a_full = a_match.group(0)
+                href_match = re.search(r'href=["\']([^"\']+)["\']', a_full)
+                href = href_match.group(1) if href_match else ''
+                inner_a_match = re.search(r'>([\s\S]*?)</a>', a_full)
+                if inner_a_match:
+                    inner_a_text = inner_a_match.group(1)
+                    # Remove any remaining HTML tags
+                    inner_a_text = re.sub(r'<[^>]+>', '', inner_a_text)
+                    if href:
+                        inner_a_text_escaped = inner_a_text.replace('[', '\\[').replace(']', '\\]')
+                        return f"link:{href}[{inner_a_text_escaped}]"
+                    return inner_a_text
+                return a_full
+            em_text = re.sub(r'<a\s+[^>]*>[\s\S]*?</a>', replace_nested_a_tag, em_text, flags=re.DOTALL)
+            
+            # Remove any other remaining HTML tags but preserve entities
+            em_text = re.sub(r'<[^>]+>', '', em_text)
+            
+            # Trim whitespace and return
+            em_text = em_text.strip()
+            return f"_{em_text}_"
+        return em_full
+    
+    # Convert all <em> tags - non-greedy matching handles nested tags correctly
+    text_content = re.sub(r'<em[^>]*>[\s\S]*?</em>', replace_em_tag, text_content, flags=re.DOTALL)
+    
+    # Then convert <a> tags (which may now contain _text_ emphasis from above)
     def replace_a_tag(match):
         """Replace a single <a> tag with AsciiDoc link format."""
         full_match = match.group(0)
@@ -97,10 +146,10 @@ def convert_html_links_to_adoc_in_text(text_content):
             return code_full
         
         # Replace <code> tags with backtick-wrapped content
-        inner_html = re.sub(r'<code[^>]*>[\s\S]*?</code>', replace_code_tag, inner_html)
+        inner_html = re.sub(r'<code[^>]*>[\s\S]*?</code>', replace_code_tag, inner_html, flags=re.DOTALL)
         
         # Remove any remaining HTML tags from inner content (keep only text)
-        # But preserve HTML entities
+        # But preserve HTML entities and already converted _text_ emphasis
         inner_text = re.sub(r'<[^>]+>', '', inner_html)
         
         # Create AsciiDoc link format: link:path[text]
