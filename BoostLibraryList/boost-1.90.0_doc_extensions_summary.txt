@@ -1,0 +1,19 @@
+Documentation extensions only (from boost-1.90.0_libraries_list.txt)
+Extension -> # libraries that have at least one file with that extension:
+
+  .qbk: 88
+  .html: 81
+  .adoc: 29
+  .xml: 27
+  .txt: 23
+  .rst: 12
+  .md: 11
+  .xsl: 7
+  .htm: 6
+  .dox: 5
+  .tex: 2
+  .reno: 1
+  .ent: 1
+
+Total unique extensions: 13
+Total (library, extension) pairs: 293

@@ -1,0 +1,71 @@
+All extensions (from boost-1.90.0_libraries_list.txt)
+Extension -> # libraries that have at least one file with that extension:
+
+  .v2: 92
+  .qbk: 88
+  .html: 81
+  .png: 55
+  .css: 31
+  .adoc: 29
+  .xml: 27
+  .txt: 23
+  .cpp: 18
+  .sh: 18
+  .svg: 18
+  .gif: 17
+  .idx: 16
+  .rst: 12
+  .hpp: 11
+  .pdf: 11
+  .md: 11
+  .json: 11
+  .jam: 9
+  .manifest: 9
+  .jpg: 9
+  .py: 8
+  .yml: 8
+  .xsl: 7
+  .js: 6
+  .htm: 6
+  .dox: 5
+  .dia: 4
+  .bat: 3
+  .mml: 2
+  .tex: 2
+  .c: 2
+  .dot: 2
+  .graffle: 2
+  .pl: 2
+  .sty: 2
+  .ttf: 2
+  .ico: 2
+  .jpeg: 1
+  .mak: 1
+  .reno: 1
+  .pptx: 1
+  .xlsx: 1
+  .output: 1
+  .csh: 1
+  .fig: 1
+  .w: 1
+  .toc: 1
+  .hdf: 1
+  .tcl: 1
+  .ent: 1
+  .odp: 1
+  .layout: 1
+  .schematic: 1
+  .h: 1
+  .mac: 1
+  .log: 1
+  .in: 1
+  .vpp: 1
+  .toml: 1
+  .dat: 1
+  .jinja2: 1
+  .rb: 1
+  .mjs: 1
+  .odg: 1
+
+Total unique extensions: 65
+Total (library, extension) pairs: 688
